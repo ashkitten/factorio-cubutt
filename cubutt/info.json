@@ -1,0 +1,9 @@
+{
+  "name": "cubutt",
+  "version": "0.1.0",
+  "title": "CuButt",
+  "author": "ashkitten",
+  "factorio_version": "1.1",
+  "dependencies": ["base >= 1.1", "Ultracube"],
+  "description": "Adds much-needed buttplug.io integration for Ultracube"
+}

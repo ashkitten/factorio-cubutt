@@ -1,0 +1,1 @@
+This mod adds Buttplug integration to the [Ultracube](https://mods.factorio.com/mod/Ultracube) mod. It requires its native connector to be running and connected to a Buttplug server. Additionally, this mod only works on Linux at the moment due to its usage of UNIX sockets to communicate with the native connector.

@@ -1,0 +1,12 @@
+[package]
+name = "cubutt-native"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+buttplug = { version = "7.1.13", features = ["client", "websockets", "tokio-runtime"], default-features = false }
+clap = { version = "4.5.2", features = ["derive"] }
+miette = { version = "7.2.0", features = ["fancy"] }
+nix = { version = "0.28.0", features = ["fs"] }
+tokio = { version = "1.36.0", features = ["net", "rt", "macros", "rt-multi-thread"] }
+tracing-subscriber = "0.3.18"
