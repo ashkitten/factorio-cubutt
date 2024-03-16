@@ -6,7 +6,13 @@ edition = "2021"
 [dependencies]
 buttplug = { version = "7.1.13", features = ["client", "websockets", "tokio-runtime"], default-features = false }
 clap = { version = "4.5.2", features = ["derive"] }
+dirs-sys = "0.4.1"
 miette = { version = "7.2.0", features = ["fancy"] }
-nix = { version = "0.28.0", features = ["fs"] }
-tokio = { version = "1.36.0", features = ["net", "rt", "macros", "rt-multi-thread"] }
+tokio = { version = "1.36.0", features = ["net", "rt", "macros", "rt-multi-thread", "fs"] }
 tracing-subscriber = "0.3.18"
+
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.28.0", features = ["fs"] }
+
+[target.'cfg(windows)'.dependencies]
+windows = "0.54.0"

@@ -7,37 +7,37 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    flake-utils.url = "github:numtide/flake-utils";
-
-    rust-overlay = {
-      url = "github:oxalica/rust-overlay";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        flake-utils.follows = "flake-utils";
-      };
+    fenix = {
+      url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { nixpkgs, crane, flake-utils, rust-overlay, ... }:
+  outputs = { nixpkgs, crane, fenix, flake-utils, ... }:
     flake-utils.lib.eachSystem [ "x86_64-linux" ] (system: let
-      pkgs = import nixpkgs {
-        inherit system;
-        overlays = [ (import rust-overlay) ];
-      };
+      pkgs = nixpkgs.legacyPackages.${system};
 
-      rustToolchain = pkgs.rust-bin.stable.latest.default.override {
-        targets = [ "x86_64-unknown-linux-musl" ];
-      };
+      toolchain = with fenix.packages.${system}; combine [
+        minimal.rustc
+        minimal.cargo
+        targets.x86_64-unknown-linux-musl.latest.rust-std
+        targets.x86_64-pc-windows-gnu.latest.rust-std
+      ];
 
-      craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
+      craneLib = (crane.mkLib pkgs).overrideToolchain toolchain;
 
-      cubutt-native = craneLib.buildPackage {
+      base = {
         src = craneLib.cleanCargoSource (craneLib.path ./native);
 
         strictDeps = true;
 
-        CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
         CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
+      };
+
+      cubutt-native-linux = craneLib.buildPackage (base // {
+        CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
 
         nativeBuildInputs = with pkgs; [
           pkg-config
@@ -48,14 +48,26 @@
           dbus
           openssl
         ];
-      };
+      });
+
+      cubutt-native-windows = craneLib.buildPackage (base // {
+        CARGO_BUILD_TARGET = "x86_64-pc-windows-gnu";
+
+        depsBuildBuild = with pkgs; [
+          pkgsCross.mingwW64.stdenv.cc
+          pkgsCross.mingwW64.windows.pthreads
+        ];
+      });
     in
       {
         checks = {
-          inherit cubutt-native;
+          inherit cubutt-native-linux cubutt-native-windows;
         };
-
-        packages.default = cubutt-native;
+      
+        packages = {
+          inherit cubutt-native-linux cubutt-native-windows;
+          default = cubutt-native-linux;
+        };
       }
     );
 }

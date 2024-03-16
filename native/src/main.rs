@@ -1,4 +1,4 @@
-use std::{env, os::unix::fs::FileTypeExt, path::PathBuf, str::FromStr};
+use std::{path::Path, str::FromStr};
 
 use buttplug::{
     client::{ButtplugClient, ScalarValueCommand},
@@ -6,11 +6,20 @@ use buttplug::{
 };
 use clap::Parser;
 use miette::{IntoDiagnostic, Result};
-use nix::{sys::stat::Mode, unistd::mkfifo};
 use tokio::{
+    fs,
     io::{AsyncBufReadExt, BufReader},
-    net::unix::pipe,
 };
+
+#[cfg(unix)]
+use std::os::unix::fs::FileTypeExt;
+#[cfg(unix)]
+use nix::{sys::stat::Mode, unistd::mkfifo};
+#[cfg(unix)]
+use tokio::net::unix::pipe;
+
+#[cfg(windows)]
+use tokio::net::windows::named_pipe::{self, PipeMode};
 
 /// Native connector for the CuButt Factorio mod
 #[derive(Parser, Debug)]
@@ -25,27 +34,40 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let args = Args::parse();
-    let path = {
-        let home = env::var("HOME").into_diagnostic()?;
-        let mut path = PathBuf::from(&home);
-        path.push(".factorio/script-output/buttplug.commands");
-        path
+
+    #[cfg(unix)]
+    let pipe = {
+        let home = dirs_sys::home_dir().unwrap();
+        let path = home.join(".factorio/script-output/buttplug.commands");
+
+        match fs::metadata(&path).await {
+            Ok(metadata) if metadata.file_type().is_fifo() => (),
+            _ => mkfifo(&path, Mode::S_IRWXU).into_diagnostic()?,
+        }
+
+        pipe::OpenOptions::new()
+            .read_write(true) // makes it resilient to the other end closing
+            .open_receiver(path)
+            .into_diagnostic()?
     };
 
-    match path.metadata() {
-        Ok(metadata) if metadata.file_type().is_fifo() => (),
-        res => {
-            if res.is_ok() {
-                fs::remove_file(&path).await.into_diagnostic()?;
-            }
-            mkfifo(&path, Mode::S_IRWXU).into_diagnostic()?;
-        },
-    }
+    #[cfg(windows)]
+    let pipe = {
+        let appdata = dirs_sys::known_folder_roaming_app_data().unwrap();
+        let path = appdata.join("Factorio/script-output/buttplug.commands");
 
-    let pipe = pipe::OpenOptions::new()
-        .read_write(true) // makes it resilient to the other end closing
-        .open_receiver(path)
-        .into_diagnostic()?;
+        const PIPE_NAME: &str = r"\\.\pipe\cubutt";
+
+        match fs::metadata(&path).await {
+            Ok(metadata) if metadata.is_symlink() => (),
+            _ => fs::symlink_file(&path, Path::new(PIPE_NAME)).await.into_diagnostic()?,
+        }
+
+        named_pipe::ServerOptions::new()
+            .pipe_mode(PipeMode::Message)
+            .create(PIPE_NAME).into_diagnostic()?
+    };
+    
     let reader = BufReader::new(pipe);
     let mut lines = reader.lines();
 
