@@ -1,4 +1,4 @@
-use std::{path::Path, str::FromStr};
+use std::str::FromStr;
 
 use buttplug::{
     client::{ButtplugClient, ScalarValueCommand},
@@ -18,6 +18,8 @@ use nix::{sys::stat::Mode, unistd::mkfifo};
 #[cfg(unix)]
 use tokio::net::unix::pipe;
 
+#[cfg(windows)]
+use std::path::Path;
 #[cfg(windows)]
 use tokio::net::windows::named_pipe::{self, PipeMode};
 
@@ -42,7 +44,12 @@ async fn main() -> Result<()> {
 
         match fs::metadata(&path).await {
             Ok(metadata) if metadata.file_type().is_fifo() => (),
-            _ => mkfifo(&path, Mode::S_IRWXU).into_diagnostic()?,
+            res => {
+                if res.is_ok() {
+                    fs::remove_file(&path).await.into_diagnostic()?;
+                }
+                mkfifo(&path, Mode::S_IRWXU).into_diagnostic()?;
+            },
         }
 
         pipe::OpenOptions::new()
@@ -58,14 +65,21 @@ async fn main() -> Result<()> {
 
         const PIPE_NAME: &str = r"\\.\pipe\cubutt";
 
+        let pipe = named_pipe::ServerOptions::new()
+            .pipe_mode(PipeMode::Message)
+            .create(PIPE_NAME).into_diagnostic()?;
+
         match fs::metadata(&path).await {
             Ok(metadata) if metadata.is_symlink() => (),
-            _ => fs::symlink_file(&path, Path::new(PIPE_NAME)).await.into_diagnostic()?,
+            res => {
+                if res.is_ok() {
+                    fs::remove_file(&path).await.into_diagnostic()?;
+                }
+                fs::symlink_file(&path, Path::new(PIPE_NAME)).await.into_diagnostic()?,
+            },
         }
 
-        named_pipe::ServerOptions::new()
-            .pipe_mode(PipeMode::Message)
-            .create(PIPE_NAME).into_diagnostic()?
+        pipe
     };
     
     let reader = BufReader::new(pipe);
