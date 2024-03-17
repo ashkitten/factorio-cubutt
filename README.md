@@ -13,5 +13,5 @@ Due to how the mod communicates with the native connector, it is only available 
 
 ## Credits
 ### Thumbnail
-Cube image: [Krastorio2Assets](https://github.com/raiguard/Krastorio2Assets/blob/main/technologies/matter-cube.png)
+Cube image: [Krastorio2Assets](https://github.com/raiguard/Krastorio2Assets/blob/main/technologies/matter-cube.png)  
 Buttcheek edit by [@hornsketch](https://www.tumblr.com/hornsketch)
