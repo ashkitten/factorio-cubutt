@@ -12,7 +12,6 @@ use tokio::{
     net::unix::pipe,
 };
 
-
 /// Native connector for the CuButt Factorio mod
 #[derive(Parser, Debug)]
 #[command(about)]
@@ -26,7 +25,6 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let args = Args::parse();
-
     let path = {
         let home = env::var("HOME").into_diagnostic()?;
         let mut path = PathBuf::from(&home);
@@ -36,7 +34,12 @@ async fn main() -> Result<()> {
 
     match path.metadata() {
         Ok(metadata) if metadata.file_type().is_fifo() => (),
-        _ => mkfifo(&path, Mode::S_IRWXU).into_diagnostic()?,
+        res => {
+            if res.is_ok() {
+                fs::remove_file(&path).await.into_diagnostic()?;
+            }
+            mkfifo(&path, Mode::S_IRWXU).into_diagnostic()?;
+        },
     }
 
     let pipe = pipe::OpenOptions::new()
