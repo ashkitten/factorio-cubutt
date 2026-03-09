@@ -10,29 +10,29 @@ script.on_event(defines.events.on_tick, function(event)
   end
 
   if new_stats["cube-utilisation"].value > stats["cube-utilisation"].value then
-    game.write_file("buttplug.commands", "1.0\n")
+    helpers.write_file("buttplug.commands", "1.0\n")
     timer = 60
   end
 
   if new_stats["cubes-consumed-total"].value > stats["cubes-consumed-total"].value then
-    game.write_file("buttplug.commands", "1.0\n")
+    helpers.write_file("buttplug.commands", "1.0\n")
     timer = 60
   end
 
   if new_stats["cubes-reconstructed"].value > stats["cubes-reconstructed"].value then
-    game.write_file("buttplug.commands", "0.5\n")
+    helpers.write_file("buttplug.commands", "0.5\n")
     timer = 60
   end
 
   if new_stats["cube-distance-travelled"].value > stats["cube-distance-travelled"].value then
-    game.write_file("buttplug.commands", "0.1\n")
+    helpers.write_file("buttplug.commands", "0.1\n")
     timer = 30
   end
 
   if timer > 0 then
     timer = timer - 1
     if timer == 0 then
-      game.write_file("buttplug.commands", "0.0\n")
+      helpers.write_file("buttplug.commands", "0.0\n")
     end
   end
 

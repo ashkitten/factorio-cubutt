@@ -8,6 +8,7 @@ use clap::Parser;
 use miette::{IntoDiagnostic, Result};
 use nix::{sys::stat::Mode, unistd::mkfifo};
 use tokio::{
+    fs,
     io::{AsyncBufReadExt, BufReader},
     net::unix::pipe,
 };
@@ -32,6 +33,11 @@ async fn main() -> Result<()> {
         path
     };
 
+    // SAFETY: path always has a parent
+    fs::create_dir_all(path.parent().unwrap())
+        .await
+        .into_diagnostic()?;
+
     match path.metadata() {
         Ok(metadata) if metadata.file_type().is_fifo() => (),
         res => {
@@ -39,7 +45,7 @@ async fn main() -> Result<()> {
                 fs::remove_file(&path).await.into_diagnostic()?;
             }
             mkfifo(&path, Mode::S_IRWXU).into_diagnostic()?;
-        },
+        }
     }
 
     let pipe = pipe::OpenOptions::new()
